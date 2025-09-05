@@ -27,7 +27,7 @@
 #### 使用 Makefile (推荐)
 
 ```bash
-git clone https://github.com/yourusername/goBili.git
+git clone https://github.com/dengmengmian/goBili.git
 cd goBili
 
 # 构建当前平台
@@ -49,7 +49,7 @@ make help
 #### 手动编译
 
 ```bash
-git clone https://github.com/yourusername/goBili.git
+git clone https://github.com/dengmengmian/goBili.git
 cd goBili
 go mod tidy
 go build -o goBili
@@ -58,7 +58,7 @@ go build -o goBili
 ### 使用 Go 安装
 
 ```bash
-go install github.com/yourusername/goBili@latest
+go install github.com/dengmengmian/goBili@latest
 ```
 
 ## 使用方法
@@ -339,6 +339,13 @@ MIT License
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
+
+## 协议文件
+
+- [LICENSE](LICENSE) - MIT 开源协议
+- [TERMS.md](TERMS.md) - 使用条款
+- [PRIVACY.md](PRIVACY.md) - 隐私政策
+- [CONTRIBUTING.md](CONTRIBUTING.md) - 贡献指南
 
 ## 致谢
 
