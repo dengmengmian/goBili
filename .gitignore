@@ -41,6 +41,10 @@ downloads/
 *.config
 *.yaml
 *.yml
+# Project and CI configs are tracked.
+!.golangci.yml
+!.goreleaser.yml
+!.github/**/*.yml
 
 # Log files
 *.log

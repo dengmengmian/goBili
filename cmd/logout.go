@@ -28,7 +28,7 @@ func init() {
 	logoutCmd.Flags().BoolP("force", "f", false, "force logout without confirmation")
 }
 
-func runLogout(cmd *cobra.Command, args []string) error {
+func runLogout(cmd *cobra.Command, _ []string) error {
 	// Get config directory
 	configDir := getConfigDir()
 
@@ -64,16 +64,23 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check for force flag
-	force, _ := cmd.Flags().GetBool("force")
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return fmt.Errorf("invalid force flag: %w", err)
+	}
 
 	if !force {
 		// Ask for confirmation
 		fmt.Print("Are you sure you want to logout? (y/N): ")
 		var input string
-		fmt.Scanln(&input)
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			// Treat input error as "no".
+			fmt.Println()
+		}
 
 		if input != "y" && input != "Y" && input != "yes" && input != "Yes" {
-			fmt.Println("Logout cancelled.")
+			fmt.Println("Logout canceled.")
 			return nil
 		}
 	}
@@ -82,7 +89,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	cookieFile := filepath.Join(configDir, "cookies.json")
 	if _, err := os.Stat(cookieFile); err == nil {
 		if err := os.Remove(cookieFile); err != nil {
-			return fmt.Errorf("failed to remove cookie file: %v", err)
+			return fmt.Errorf("failed to remove cookie file: %w", err)
 		}
 		fmt.Println("✓ Cookie file removed")
 	} else {

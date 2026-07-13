@@ -35,9 +35,15 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
 
 	// Bind flags to viper
-	viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output"))
-	viper.BindPFlag("threads", rootCmd.PersistentFlags().Lookup("threads"))
-	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	if err := viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output")); err != nil {
+		cobra.CheckErr(err)
+	}
+	if err := viper.BindPFlag("threads", rootCmd.PersistentFlags().Lookup("threads")); err != nil {
+		cobra.CheckErr(err)
+	}
+	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+		cobra.CheckErr(err)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

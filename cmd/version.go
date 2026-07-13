@@ -27,7 +27,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 }
 
-func runVersion(cmd *cobra.Command, args []string) {
+func runVersion(_ *cobra.Command, _ []string) {
 	fmt.Printf("goBili %s\n", Version)
 	fmt.Printf("  build time: %s\n", BuildTime)
 	fmt.Printf("  git commit: %s\n", GitCommit)

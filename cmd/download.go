@@ -48,27 +48,30 @@ func runDownload(cmd *cobra.Command, args []string) error {
 	threads := viper.GetInt("threads")
 	verbose := viper.GetBool("verbose")
 
-	quality, _ := cmd.Flags().GetString("quality")
+	quality, err := cmd.Flags().GetString("quality")
+	if err != nil {
+		return fmt.Errorf("invalid quality flag: %w", err)
+	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return fmt.Errorf("invalid format flag: %v", err)
+		return fmt.Errorf("invalid format flag: %w", err)
 	}
 	audioOnly, err := cmd.Flags().GetBool("audio-only")
 	if err != nil {
-		return fmt.Errorf("invalid audio-only flag: %v", err)
+		return fmt.Errorf("invalid audio-only flag: %w", err)
 	}
 	videoOnly, err := cmd.Flags().GetBool("video-only")
 	if err != nil {
-		return fmt.Errorf("invalid video-only flag: %v", err)
+		return fmt.Errorf("invalid video-only flag: %w", err)
 	}
 	pages, err := cmd.Flags().GetString("pages")
 	if err != nil {
-		return fmt.Errorf("invalid pages flag: %v", err)
+		return fmt.Errorf("invalid pages flag: %w", err)
 	}
 
 	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %v", err)
+		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	// Initialize logger
@@ -100,7 +103,7 @@ func runDownload(cmd *cobra.Command, args []string) error {
 	// Parse URL to determine if it's a single video or playlist
 	videoInfo, err := p.ParseURL(url)
 	if err != nil {
-		return fmt.Errorf("failed to parse URL: %v", err)
+		return fmt.Errorf("failed to parse URL: %w", err)
 	}
 
 	// Initialize downloader
@@ -138,7 +141,7 @@ func downloadSingleVideo(p *parser.BilibiliParser, dl *downloader.Downloader, vi
 	// Get video streams using parser
 	streams, err := p.GetVideoStreams(videoInfo)
 	if err != nil {
-		return fmt.Errorf("failed to get video streams: %v", err)
+		return fmt.Errorf("failed to get video streams: %w", err)
 	}
 
 	// Download the video
@@ -156,7 +159,7 @@ func downloadPlaylist(p *parser.BilibiliParser, dl *downloader.Downloader, video
 		// Parse specific pages (e.g., "1,2,3" or "1-5")
 		indices, err := parsePageRange(pages, len(videoInfo.Episodes))
 		if err != nil {
-			return fmt.Errorf("invalid pages parameter: %v", err)
+			return fmt.Errorf("invalid pages parameter: %w", err)
 		}
 
 		for _, idx := range indices {
@@ -196,7 +199,7 @@ func downloadPlaylist(p *parser.BilibiliParser, dl *downloader.Downloader, video
 	return nil
 }
 
-func parsePageRange(pages string, maxPages int) ([]int, error) {
+func parsePageRange(pages string, _ int) ([]int, error) {
 	var indices []int
 
 	// Handle comma-separated values

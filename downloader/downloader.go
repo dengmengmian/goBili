@@ -83,7 +83,7 @@ func NewDownloader(config Config) *Downloader {
 }
 
 // GetVideoStreams fetches available video streams for a video
-func (d *Downloader) GetVideoStreams(videoInfo *parser.VideoInfo) ([]*parser.StreamInfo, error) {
+func (d *Downloader) GetVideoStreams(_ *parser.VideoInfo) ([]*parser.StreamInfo, error) {
 	// This method is now handled by the parser
 	// We'll create a parser instance to get the streams
 	// In a real implementation, you might want to pass the parser as a dependency
@@ -114,7 +114,7 @@ func (d *Downloader) DownloadVideoContext(ctx context.Context, videoInfo *parser
 
 	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %v", err)
+		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	// Check context before starting downloads.
@@ -127,11 +127,11 @@ func (d *Downloader) DownloadVideoContext(ctx context.Context, videoInfo *parser
 	// Download based on configuration
 	if d.config.AudioOnly {
 		return d.downloadAudio(ctx, stream, outputPath)
-	} else if d.config.VideoOnly {
-		return d.downloadVideoOnly(ctx, stream, outputPath)
-	} else {
-		return d.downloadVideoAndAudio(ctx, stream, outputPath)
 	}
+	if d.config.VideoOnly {
+		return d.downloadVideoOnly(ctx, stream, outputPath)
+	}
+	return d.downloadVideoAndAudio(ctx, stream, outputPath)
 }
 
 // selectStream selects the appropriate stream based on quality preference
@@ -297,11 +297,11 @@ func (d *Downloader) downloadVideoAndAudio(ctx context.Context, stream *parser.S
 
 	if videoErr != nil {
 		os.Remove(audioPath) // Clean up partial audio.
-		return fmt.Errorf("failed to download video: %v", videoErr)
+		return fmt.Errorf("failed to download video: %w", videoErr)
 	}
 	if audioErr != nil {
 		os.Remove(videoPath) // Clean up partial video.
-		return fmt.Errorf("failed to download audio: %v", audioErr)
+		return fmt.Errorf("failed to download audio: %w", audioErr)
 	}
 
 	// For now, just copy the video file as the final output
@@ -332,7 +332,7 @@ func (d *Downloader) downloadFileSingle(ctx context.Context, url, outputPath str
 	// Create the output file.
 	file, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %v", err)
+		return fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer file.Close()
 
@@ -354,7 +354,7 @@ func (d *Downloader) downloadFileSingle(ctx context.Context, url, outputPath str
 			req, reqErr = http.NewRequestWithContext(ctx, "GET", url, nil)
 		}
 		if reqErr != nil {
-			return 0, fmt.Errorf("failed to create request: %v", reqErr)
+			return 0, fmt.Errorf("failed to create request: %w", reqErr)
 		}
 
 		req = req.WithContext(ctx)
@@ -375,10 +375,10 @@ func (d *Downloader) downloadFileSingle(ctx context.Context, url, outputPath str
 		}
 
 		if err := file.Truncate(0); err != nil {
-			return 0, fmt.Errorf("failed to truncate file: %v", err)
+			return 0, fmt.Errorf("failed to truncate file: %w", err)
 		}
 		if _, err := file.Seek(0, 0); err != nil {
-			return 0, fmt.Errorf("failed to seek file: %v", err)
+			return 0, fmt.Errorf("failed to seek file: %w", err)
 		}
 
 		progressReader := &ProgressReader{
@@ -388,7 +388,7 @@ func (d *Downloader) downloadFileSingle(ctx context.Context, url, outputPath str
 		}
 
 		if _, err := io.Copy(file, progressReader); err != nil {
-			return 0, fmt.Errorf("failed to write file: %v", err)
+			return 0, fmt.Errorf("failed to write file: %w", err)
 		}
 
 		d.logger.Infof("Successfully downloaded: %s", outputPath)
@@ -447,12 +447,12 @@ func (d *Downloader) downloadFileChunked(ctx context.Context, url string, output
 	// Create the output file and pre-allocate it.
 	file, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %v", err)
+		return fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer file.Close()
 
 	if err := file.Truncate(contentLength); err != nil {
-		return fmt.Errorf("failed to pre-allocate file: %v", err)
+		return fmt.Errorf("failed to pre-allocate file: %w", err)
 	}
 
 	// Download chunks concurrently.
@@ -512,7 +512,7 @@ func (d *Downloader) downloadChunk(ctx context.Context, url string, file *os.Fil
 			req, reqErr = http.NewRequestWithContext(ctx, "GET", url, nil)
 		}
 		if reqErr != nil {
-			return 0, fmt.Errorf("failed to create request: %v", reqErr)
+			return 0, fmt.Errorf("failed to create request: %w", reqErr)
 		}
 
 		req = req.WithContext(ctx)
@@ -531,12 +531,12 @@ func (d *Downloader) downloadChunk(ctx context.Context, url string, file *os.Fil
 		// Read the chunk into memory.
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return 0, fmt.Errorf("failed to read chunk: %v", err)
+			return 0, fmt.Errorf("failed to read chunk: %w", err)
 		}
 
 		// Write chunk at the correct offset.
 		if _, err := file.WriteAt(data, start); err != nil {
-			return 0, fmt.Errorf("failed to write chunk at offset %d: %v", start, err)
+			return 0, fmt.Errorf("failed to write chunk at offset %d: %w", start, err)
 		}
 
 		return resp.StatusCode, nil
@@ -603,19 +603,19 @@ func (d *Downloader) isFFmpegAvailable() bool {
 func (d *Downloader) copyFile(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
-		return fmt.Errorf("failed to open source file: %v", err)
+		return fmt.Errorf("failed to open source file: %w", err)
 	}
 	defer srcFile.Close()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
-		return fmt.Errorf("failed to create destination file: %v", err)
+		return fmt.Errorf("failed to create destination file: %w", err)
 	}
 	defer dstFile.Close()
 
 	_, err = io.Copy(dstFile, srcFile)
 	if err != nil {
-		return fmt.Errorf("failed to copy file: %v", err)
+		return fmt.Errorf("failed to copy file: %w", err)
 	}
 
 	return nil
@@ -626,7 +626,7 @@ func (d *Downloader) DownloadWithProgress(ctx context.Context, url, outputPath s
 	// Create the output file
 	file, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %v", err)
+		return fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer file.Close()
 
@@ -635,15 +635,15 @@ func (d *Downloader) DownloadWithProgress(ctx context.Context, url, outputPath s
 	return retry(ctx, cfg, func() (int, error) {
 		// Reset file for retry.
 		if err := file.Truncate(0); err != nil {
-			return 0, fmt.Errorf("failed to truncate file: %v", err)
+			return 0, fmt.Errorf("failed to truncate file: %w", err)
 		}
 		if _, err := file.Seek(0, 0); err != nil {
-			return 0, fmt.Errorf("failed to seek file: %v", err)
+			return 0, fmt.Errorf("failed to seek file: %w", err)
 		}
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
-			return 0, fmt.Errorf("failed to create request: %v", err)
+			return 0, fmt.Errorf("failed to create request: %w", err)
 		}
 
 		resp, err := d.client.Do(req)
@@ -671,7 +671,7 @@ func (d *Downloader) DownloadWithProgress(ctx context.Context, url, outputPath s
 
 		// Copy with progress
 		if _, err := io.Copy(file, progressReader); err != nil {
-			return 0, fmt.Errorf("failed to write file: %v", err)
+			return 0, fmt.Errorf("failed to write file: %w", err)
 		}
 
 		return resp.StatusCode, nil

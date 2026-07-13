@@ -33,7 +33,7 @@ func init() {
 	loginCmd.Flags().BoolP("browser", "b", false, "open browser to login and automatically capture cookies")
 }
 
-func runLogin(cmd *cobra.Command, args []string) error {
+func runLogin(cmd *cobra.Command, _ []string) error {
 	// Get config directory
 	configDir := getConfigDir()
 
@@ -68,20 +68,26 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check login method
-	cookieFile, _ := cmd.Flags().GetString("cookie-file")
-	useBrowser, _ := cmd.Flags().GetBool("browser")
+	cookieFile, err := cmd.Flags().GetString("cookie-file")
+	if err != nil {
+		return fmt.Errorf("invalid cookie-file flag: %w", err)
+	}
+	useBrowser, err := cmd.Flags().GetBool("browser")
+	if err != nil {
+		return fmt.Errorf("invalid browser flag: %w", err)
+	}
 
 	if useBrowser {
 		// Browser login
 		fmt.Println("Starting browser login...")
 		if err := loginWithBrowser(authManager, logger); err != nil {
-			return fmt.Errorf("browser login failed: %v", err)
+			return fmt.Errorf("browser login failed: %w", err)
 		}
 	} else if cookieFile != "" {
 		// Load cookies from file
 		fmt.Printf("Loading cookies from file: %s\n", cookieFile)
 		if err := loadCookiesFromFile(authManager, cookieFile); err != nil {
-			return fmt.Errorf("failed to load cookies from file: %v", err)
+			return fmt.Errorf("failed to load cookies from file: %w", err)
 		}
 
 		// Save cookies to config directory
@@ -92,14 +98,14 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		// Perform QR code login
 		fmt.Println("Starting QR code login...")
 		if err := authManager.LoginWithQRCode(); err != nil {
-			return fmt.Errorf("QR code login failed: %v", err)
+			return fmt.Errorf("QR code login failed: %w", err)
 		}
 	}
 
 	// Verify login by getting user info
 	userInfo, err := authManager.GetUserInfo()
 	if err != nil {
-		return fmt.Errorf("login verification failed: %v", err)
+		return fmt.Errorf("login verification failed: %w", err)
 	}
 
 	fmt.Printf("Login successful! Welcome, %s (UID: %d)\n", userInfo.Name, userInfo.Mid)
@@ -121,7 +127,7 @@ func loadCookiesFromFile(authManager *auth.AuthManager, filePath string) error {
 	// Read file content
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read cookie file: %v", err)
+		return fmt.Errorf("failed to read cookie file: %w", err)
 	}
 
 	// Parse cookie content
@@ -161,28 +167,28 @@ func loadCookiesFromFile(authManager *auth.AuthManager, filePath string) error {
 }
 
 // loginWithBrowser opens browser and provides instructions for manual cookie extraction
-func loginWithBrowser(authManager *auth.AuthManager, logger *logrus.Logger) error {
-	fmt.Println("=== 浏览器登录模式 ===")
-	fmt.Println("此模式将打开浏览器让您登录B站，然后您需要手动复制Cookie。")
+func loginWithBrowser(_ *auth.AuthManager, logger *logrus.Logger) error {
+	fmt.Println("=== Browser Login Mode ===")
+	fmt.Println("This mode opens your browser for Bilibili login, then you extract cookies manually.")
 	fmt.Println()
 
 	// Open browser to Bilibili login page
 	bilibiliLoginURL := "https://passport.bilibili.com/login"
 
-	fmt.Printf("正在打开浏览器到: %s\n", bilibiliLoginURL)
+	fmt.Printf("Opening browser: %s\n", bilibiliLoginURL)
 
 	if err := openBrowser(bilibiliLoginURL); err != nil {
 		logger.Warnf("Failed to open browser: %v", err)
-		fmt.Printf("请手动打开浏览器访问: %s\n", bilibiliLoginURL)
+		fmt.Printf("Please manually open: %s\n", bilibiliLoginURL)
 	}
 
 	fmt.Println()
-	fmt.Println("请在浏览器中完成登录，然后按照以下步骤获取Cookie：")
+	fmt.Println("Complete the login in your browser, then follow these steps to extract cookies:")
 	fmt.Println()
-	fmt.Println("1. 登录成功后，按F12打开开发者工具")
-	fmt.Println("2. 切换到 'Application' 或 '存储' 标签页")
-	fmt.Println("3. 在左侧找到 'Cookies' -> 'https://www.bilibili.com'")
-	fmt.Println("4. 找到以下Cookie并复制其值：")
+	fmt.Println("1. After login, press F12 to open Developer Tools")
+	fmt.Println("2. Go to the 'Application' or 'Storage' tab")
+	fmt.Println("3. Find 'Cookies' -> 'https://www.bilibili.com' in the sidebar")
+	fmt.Println("4. Copy the values of these cookies:")
 	fmt.Println("   - SESSDATA")
 	fmt.Println("   - bili_jct")
 	fmt.Println("   - DedeUserID")
@@ -191,26 +197,30 @@ func loginWithBrowser(authManager *auth.AuthManager, logger *logrus.Logger) erro
 	fmt.Println("   - buvid3")
 	fmt.Println("   - buvid4")
 	fmt.Println()
-	fmt.Println("5. 将Cookie保存为文本文件，格式如下：")
-	fmt.Println("   SESSDATA	你的SESSDATA值")
-	fmt.Println("   bili_jct	你的bili_jct值")
-	fmt.Println("   DedeUserID	你的DedeUserID值")
+	fmt.Println("5. Save them as a tab-separated text file:")
+	fmt.Println("   SESSDATA\tyour_SESSDATA_value")
+	fmt.Println("   bili_jct\tyour_bili_jct_value")
+	fmt.Println("   DedeUserID\tyour_DedeUserID_value")
 	fmt.Println("   ...")
 	fmt.Println()
-	fmt.Println("6. 保存文件后，使用以下命令导入Cookie：")
-	fmt.Println("   ./goBili login -c 你的cookie文件路径")
+	fmt.Println("6. Import the cookies:")
+	fmt.Println("   ./goBili login -c /path/to/cookie-file")
 	fmt.Println()
 
 	// Wait for user to complete the process
-	fmt.Print("按回车键继续，或输入 'q' 退出: ")
+	fmt.Print("Press Enter to continue, or type 'q' to quit: ")
 	var input string
-	fmt.Scanln(&input)
-
-	if input == "q" || input == "Q" {
-		return fmt.Errorf("用户取消登录")
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		// If Scanln fails (e.g. EOF), treat as quit.
+		return fmt.Errorf("login canceled")
 	}
 
-	return fmt.Errorf("请按照上述步骤获取Cookie，然后使用 -c 参数导入")
+	if input == "q" || input == "Q" {
+		return fmt.Errorf("user canceled login")
+	}
+
+	return fmt.Errorf("please extract cookies manually and use the -c flag to import them")
 }
 
 // openBrowser opens the specified URL in the default browser

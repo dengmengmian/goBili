@@ -18,7 +18,9 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
-// AuthManager handles Bilibili authentication
+// AuthManager handles Bilibili authentication.
+//
+//nolint:revive // intentional: exported as AuthManager for clarity in auth package
 type AuthManager struct {
 	cookies   map[string]string
 	userAgent string
@@ -81,11 +83,11 @@ func (am *AuthManager) LoadCookies() error {
 
 	data, err := os.ReadFile(cookieFile)
 	if err != nil {
-		return fmt.Errorf("failed to read cookie file: %v", err)
+		return fmt.Errorf("failed to read cookie file: %w", err)
 	}
 
 	if err := json.Unmarshal(data, &am.cookies); err != nil {
-		return fmt.Errorf("failed to parse cookie file: %v", err)
+		return fmt.Errorf("failed to parse cookie file: %w", err)
 	}
 
 	am.logger.Info("Loaded cookies from file")
@@ -95,17 +97,17 @@ func (am *AuthManager) LoadCookies() error {
 // SaveCookies saves cookies to file
 func (am *AuthManager) SaveCookies() error {
 	if err := os.MkdirAll(am.configDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %v", err)
+		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	cookieFile := filepath.Join(am.configDir, "cookies.json")
 	data, err := json.MarshalIndent(am.cookies, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal cookies: %v", err)
+		return fmt.Errorf("failed to marshal cookies: %w", err)
 	}
 
 	if err := os.WriteFile(cookieFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write cookie file: %v", err)
+		return fmt.Errorf("failed to write cookie file: %w", err)
 	}
 
 	am.logger.Info("Saved cookies to file")
@@ -275,40 +277,40 @@ func (am *AuthManager) LoginWithQRCode() error {
 	// Generate QR code
 	qrInfo, err := am.GenerateQRCode()
 	if err != nil {
-		return fmt.Errorf("failed to generate QR code: %v", err)
+		return fmt.Errorf("failed to generate QR code: %w", err)
 	}
 
-	fmt.Printf("请使用B站APP扫描二维码登录:\n")
-	fmt.Printf("二维码链接: %s\n", qrInfo.QRCodeURL)
-	fmt.Printf("或者访问: %s\n", qrInfo.URL)
+	fmt.Printf("Scan the QR code with the Bilibili mobile app to log in:\n")
+	fmt.Printf("QR code URL: %s\n", qrInfo.QRCodeURL)
+	fmt.Printf("Or visit: %s\n", qrInfo.URL)
 
 	// Display QR code in terminal
 	if qrInfo.QRCodeURL != "" {
-		fmt.Println("\n=== 二维码 ===")
+		fmt.Println("\n=== QR Code ===")
 		if err := displayQRCode(qrInfo.QRCodeURL); err != nil {
 			am.logger.Warnf("Failed to display QR code: %v", err)
-			fmt.Println("无法在终端显示二维码，请使用上面的链接")
+			fmt.Println("Unable to display QR code in terminal; please use the link above.")
 		}
-		fmt.Println("=== 二维码 ===")
+		fmt.Println("=== QR Code ===")
 	}
 
-	fmt.Println("\n等待扫描...")
+	fmt.Println("\nWaiting for scan...")
 
 	// Poll for scan status
 	for {
 		status, err := am.CheckQRCodeStatus(qrInfo.OAuthKey)
 		if err != nil {
-			return fmt.Errorf("failed to check QR code status: %v", err)
+			return fmt.Errorf("failed to check QR code status: %w", err)
 		}
 
 		switch status.Data.Code {
 		case 0:
 			// Success
-			fmt.Println("登录成功!")
+			fmt.Println("Login successful!")
 
 			// Parse cookies from the redirect URL
 			if err := am.parseCookiesFromURL(status.Data.URL); err != nil {
-				return fmt.Errorf("failed to parse cookies: %v", err)
+				return fmt.Errorf("failed to parse cookies: %w", err)
 			}
 
 			// Save cookies
@@ -324,14 +326,14 @@ func (am *AuthManager) LoginWithQRCode() error {
 			continue
 		case 86090:
 			// Scanned but not confirmed
-			fmt.Println("\n二维码已扫描，请在手机上确认登录")
+			fmt.Println("\nQR code scanned. Please confirm login on your phone.")
 			time.Sleep(2 * time.Second)
 			continue
 		case 86038:
 			// Expired
-			return fmt.Errorf("二维码已过期，请重新生成")
+			return fmt.Errorf("QR code expired; please restart login to get a new one")
 		default:
-			return fmt.Errorf("登录失败: %s", status.Data.Message)
+			return fmt.Errorf("login failed: %s", status.Data.Message)
 		}
 	}
 }

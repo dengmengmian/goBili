@@ -106,7 +106,7 @@ func (p *BilibiliParser) ParseURL(rawURL string) (*VideoInfo, error) {
 	// Parse the URL
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %v", err)
+		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 
 	// Extract BVID or other identifiers from URL
@@ -131,7 +131,7 @@ func (p *BilibiliParser) parseVideoURL(rawURL string) (*VideoInfo, error) {
 	// Get video information from API
 	videoInfo, err := p.getVideoInfo(bvid)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get video info: %v", err)
+		return nil, fmt.Errorf("failed to get video info: %w", err)
 	}
 
 	// Check if this is a multi-part video (has multiple pages)
@@ -175,7 +175,7 @@ func (p *BilibiliParser) parsePlaylistURL(rawURL string) (*VideoInfo, error) {
 	// Get playlist information from API
 	playlistInfo, err := p.getPlaylistInfo(seasonID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get playlist info: %v", err)
+		return nil, fmt.Errorf("failed to get playlist info: %w", err)
 	}
 
 	playlistInfo.Type = "playlist"

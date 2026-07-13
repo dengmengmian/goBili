@@ -3,6 +3,7 @@ package downloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -41,7 +42,8 @@ func isRetryable(err error, statusCode int) bool {
 	// Retry on transient network errors.
 	if err != nil {
 		// Check for timeout and temporary errors.
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
 			return true
 		}
 		// Check for connection reset and other temporary conditions.
@@ -74,7 +76,7 @@ func retry(ctx context.Context, cfg retryConfig, fn func() (int, error)) error {
 		select {
 		case <-ctx.Done():
 			if lastErr != nil {
-				return fmt.Errorf("%w (after %d retries): %v", ctx.Err(), attempt, lastErr)
+				return fmt.Errorf("%w (after %d retries): %s", ctx.Err(), attempt, lastErr.Error())
 			}
 			return ctx.Err()
 		default:
@@ -107,12 +109,13 @@ func retry(ctx context.Context, cfg retryConfig, fn func() (int, error)) error {
 			float64(cfg.MaxDelay),
 		))
 		// Add jitter: ±25%.
+		//nolint:gosec // math/rand is acceptable for retry jitter; it is not security-sensitive.
 		jitter := time.Duration(rand.Int63n(int64(delay)/2 + 1))
 		delay = delay - delay/4 + jitter
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("%w (after %d retries): %v", ctx.Err(), attempt, lastErr)
+			return fmt.Errorf("%w (after %d retries): %s", ctx.Err(), attempt, lastErr.Error())
 		case <-time.After(delay):
 		}
 	}
