@@ -1,3 +1,6 @@
+// Package auth manages Bilibili authentication via cookies and QR code.
+// It supports loading/saving cookies from a local file, polling QR code
+// login status, and verifying the authenticated user identity.
 package auth
 
 import (

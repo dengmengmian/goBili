@@ -1,3 +1,5 @@
+// Package cmd provides the CLI commands for goBili.
+// It uses cobra for command-line parsing and viper for configuration.
 package cmd
 
 import (

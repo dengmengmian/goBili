@@ -1,3 +1,6 @@
+// Package downloader downloads Bilibili video and audio streams.
+// It handles DASH stream merging (with or without ffmpeg), progress
+// reporting, safe filename generation, and configurable quality selection.
 package downloader
 
 import (
@@ -10,8 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
-	"goBili/parser"
+	"github.com/dengmengmian/goBili/parser"
 
 	"github.com/sirupsen/logrus"
 )
@@ -57,7 +61,7 @@ func NewDownloader(config Config) *Downloader {
 		config: config,
 		logger: logger,
 		client: &http.Client{
-			Timeout: 0, // No timeout for downloads
+			Timeout: 30 * time.Minute, // Long timeout for large downloads; connection-level deadlines use transport
 		},
 	}
 }
@@ -143,20 +147,7 @@ func (d *Downloader) selectStream(streams []*parser.StreamInfo) *parser.StreamIn
 // generateFilename generates a filename for the downloaded video
 func (d *Downloader) generateFilename(videoInfo *parser.VideoInfo, stream *parser.StreamInfo) string {
 	// Clean the title for use as filename
-	title := strings.ReplaceAll(videoInfo.Title, "/", "_")
-	title = strings.ReplaceAll(title, "\\", "_")
-	title = strings.ReplaceAll(title, ":", "_")
-	title = strings.ReplaceAll(title, "*", "_")
-	title = strings.ReplaceAll(title, "?", "_")
-	title = strings.ReplaceAll(title, "\"", "_")
-	title = strings.ReplaceAll(title, "<", "_")
-	title = strings.ReplaceAll(title, ">", "_")
-	title = strings.ReplaceAll(title, "|", "_")
-
-	// Truncate if too long
-	if len(title) > 100 {
-		title = title[:100]
-	}
+	title := sanitizeFilename(videoInfo.Title)
 
 	// Add quality suffix
 	qualitySuffix := ""
@@ -172,6 +163,50 @@ func (d *Downloader) generateFilename(videoInfo *parser.VideoInfo, stream *parse
 	}
 
 	return fmt.Sprintf("%s%s.%s", title, qualitySuffix, d.config.Format)
+}
+
+// sanitizeFilename cleans a string to be a safe filename component.
+// It removes path separators, control characters, and other unsafe runes,
+// truncates to a reasonable length, and ensures the result is not empty
+// and does not resolve to a parent directory.
+func sanitizeFilename(name string) string {
+	// Replace known dangerous characters with underscores.
+	replacer := strings.NewReplacer(
+		"/", "_", "\\", "_", ":", "_", "*", "_", "?", "_",
+		"\"", "_", "<", "_", ">", "_", "|", "_",
+	)
+	clean := replacer.Replace(name)
+
+	// Remove any remaining control or non-printable characters.
+	clean = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || !unicode.IsPrint(r) {
+			return '_'
+		}
+		return r
+	}, clean)
+
+	// Strip leading/trailing spaces and dots (problematic on Windows).
+	clean = strings.Trim(clean, " .")
+
+	// Ensure the result is not empty.
+	if clean == "" {
+		clean = "video"
+	}
+
+	// Truncate to a reasonable maximum length.
+	const maxLen = 200
+	cleanRunes := []rune(clean)
+	if len(cleanRunes) > maxLen {
+		clean = string(cleanRunes[:maxLen])
+	}
+
+	// Prevent path traversal: use only the base name.
+	clean = filepath.Base(clean)
+	if clean == "." || clean == ".." {
+		clean = "video"
+	}
+
+	return clean
 }
 
 // downloadAudio downloads only the audio stream
@@ -337,8 +372,12 @@ func (d *Downloader) mergeVideoAndAudio(videoPath, audioPath, outputPath string)
 	}
 
 	// Clean up temporary files
-	os.Remove(videoPath)
-	os.Remove(audioPath)
+	if err := os.Remove(videoPath); err != nil {
+		d.logger.Warnf("failed to remove temporary video file %s: %v", videoPath, err)
+	}
+	if err := os.Remove(audioPath); err != nil {
+		d.logger.Warnf("failed to remove temporary audio file %s: %v", audioPath, err)
+	}
 
 	d.logger.Infof("Successfully merged: %s", outputPath)
 	return nil
@@ -428,7 +467,7 @@ func (pr *ProgressReader) Read(p []byte) (n int, err error) {
 	pr.ReadBytes += int64(n)
 
 	// Show progress every 1MB or when complete
-	if pr.Total > 0 && (pr.ReadBytes%1024*1024 == 0 || err != nil) {
+	if pr.Total > 0 && (pr.ReadBytes%(1024*1024) == 0 || err != nil) {
 		percentage := float64(pr.ReadBytes) / float64(pr.Total) * 100
 		fmt.Printf("\rDownloading: %.1f%% (%.2f/%.2f MB)",
 			percentage,

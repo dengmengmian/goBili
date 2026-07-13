@@ -1,3 +1,6 @@
+// Package parser parses Bilibili URLs and API responses.
+// It extracts video/playlist metadata, resolves stream URLs (DASH and
+// legacy formats), and provides quality-based stream selection.
 package parser
 
 import (
@@ -10,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"goBili/auth"
+	"github.com/dengmengmian/goBili/auth"
 
 	"github.com/sirupsen/logrus"
 )
@@ -66,9 +69,9 @@ type StreamInfo struct {
 
 // APIResponse represents the structure of Bilibili API responses
 type APIResponse struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data"`
 }
 
 // VideoAPIResponse represents video API response data
@@ -208,14 +211,8 @@ func (p *BilibiliParser) getVideoInfo(bvid string) (*VideoInfo, error) {
 		return nil, fmt.Errorf("API error: %s", apiResp.Message)
 	}
 
-	// Parse the data
-	dataBytes, err := json.Marshal(apiResp.Data)
-	if err != nil {
-		return nil, err
-	}
-
 	var videoData VideoAPIResponse
-	if err := json.Unmarshal(dataBytes, &videoData); err != nil {
+	if err := json.Unmarshal(apiResp.Data, &videoData); err != nil {
 		return nil, err
 	}
 
@@ -261,12 +258,6 @@ func (p *BilibiliParser) getPlaylistInfo(seasonID string) (*VideoInfo, error) {
 		return nil, fmt.Errorf("API error: %s", apiResp.Message)
 	}
 
-	// Parse the data
-	dataBytes, err := json.Marshal(apiResp.Data)
-	if err != nil {
-		return nil, err
-	}
-
 	var playlistData struct {
 		Title    string `json:"title"`
 		Episodes []struct {
@@ -278,7 +269,7 @@ func (p *BilibiliParser) getPlaylistInfo(seasonID string) (*VideoInfo, error) {
 		} `json:"episodes"`
 	}
 
-	if err := json.Unmarshal(dataBytes, &playlistData); err != nil {
+	if err := json.Unmarshal(apiResp.Data, &playlistData); err != nil {
 		return nil, err
 	}
 

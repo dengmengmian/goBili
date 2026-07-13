@@ -1,4 +1,4 @@
-module goBili
+module github.com/dengmengmian/goBili
 
 go 1.21
 

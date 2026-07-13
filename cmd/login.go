@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"goBili/auth"
+	"github.com/dengmengmian/goBili/auth"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

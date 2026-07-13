@@ -12,7 +12,7 @@ BUILD_DIR = build
 DIST_DIR = dist
 
 # Go 构建参数
-LDFLAGS = -ldflags "-X goBili/cmd.Version=$(VERSION) -X goBili/cmd.BuildTime=$(BUILD_TIME) -X goBili/cmd.GitCommit=$(GIT_COMMIT)"
+LDFLAGS = -ldflags "-X github.com/dengmengmian/goBili/cmd.Version=$(VERSION) -X github.com/dengmengmian/goBili/cmd.BuildTime=$(BUILD_TIME) -X github.com/dengmengmian/goBili/cmd.GitCommit=$(GIT_COMMIT)"
 GO_FLAGS = -trimpath
 CGO_ENABLED = 0
 

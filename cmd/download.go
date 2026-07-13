@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"goBili/auth"
-	"goBili/downloader"
-	"goBili/parser"
+	"github.com/dengmengmian/goBili/auth"
+	"github.com/dengmengmian/goBili/downloader"
+	"github.com/dengmengmian/goBili/parser"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -49,10 +49,22 @@ func runDownload(cmd *cobra.Command, args []string) error {
 	verbose := viper.GetBool("verbose")
 
 	quality, _ := cmd.Flags().GetString("quality")
-	format, _ := cmd.Flags().GetString("format")
-	audioOnly, _ := cmd.Flags().GetBool("audio-only")
-	videoOnly, _ := cmd.Flags().GetBool("video-only")
-	pages, _ := cmd.Flags().GetString("pages")
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return fmt.Errorf("invalid format flag: %v", err)
+	}
+	audioOnly, err := cmd.Flags().GetBool("audio-only")
+	if err != nil {
+		return fmt.Errorf("invalid audio-only flag: %v", err)
+	}
+	videoOnly, err := cmd.Flags().GetBool("video-only")
+	if err != nil {
+		return fmt.Errorf("invalid video-only flag: %v", err)
+	}
+	pages, err := cmd.Flags().GetString("pages")
+	if err != nil {
+		return fmt.Errorf("invalid pages flag: %v", err)
+	}
 
 	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
