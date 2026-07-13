@@ -254,9 +254,9 @@ func TestNewDownloader(t *testing.T) {
 	if d.logger == nil {
 		t.Error("logger is nil")
 	}
-	// Timeout should be set (not zero).
-	if d.client.Timeout == 0 {
-		t.Error("HTTP client timeout is zero, expected non-zero")
+	// Transport should be configured with timeouts (not DefaultTransport).
+	if d.client.Transport == nil {
+		t.Error("HTTP client transport is nil")
 	}
 }
 

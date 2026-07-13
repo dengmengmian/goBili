@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 )
 
-// 版本信息变量，需要在构建时设置
+// Build-time variables, injected via -ldflags.
+// See Makefile for release builds.
 var (
 	Version   = "dev"
 	BuildTime = "unknown"
@@ -16,12 +18,9 @@ var (
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "显示 goBili 版本信息",
-	Long: `显示 goBili 的版本信息，包括：
-- 版本号
-- 构建时间
-- Git 提交哈希`,
-	Run: runVersion,
+	Short: "Print goBili version information",
+	Long:  "Print the version, build time, and git commit of goBili.",
+	Run:   runVersion,
 }
 
 func init() {
@@ -29,8 +28,24 @@ func init() {
 }
 
 func runVersion(cmd *cobra.Command, args []string) {
-	fmt.Printf("goBili 版本信息:\n")
-	fmt.Printf("  版本: %s\n", Version)
-	fmt.Printf("  构建时间: %s\n", BuildTime)
-	fmt.Printf("  Git提交: %s\n", GitCommit)
+	fmt.Printf("goBili %s\n", Version)
+	fmt.Printf("  build time: %s\n", BuildTime)
+	fmt.Printf("  git commit: %s\n", GitCommit)
+
+	// Fallback: if not built via Makefile (e.g. go install), use runtime build info.
+	if Version == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			if info.Main.Version != "" && info.Main.Version != "(devel)" {
+				fmt.Printf("  go module:  %s\n", info.Main.Version)
+			}
+			for _, s := range info.Settings {
+				switch s.Key {
+				case "vcs.revision":
+					fmt.Printf("  vcs.revision: %s\n", s.Value)
+				case "vcs.time":
+					fmt.Printf("  vcs.time:     %s\n", s.Value)
+				}
+			}
+		}
+	}
 }
